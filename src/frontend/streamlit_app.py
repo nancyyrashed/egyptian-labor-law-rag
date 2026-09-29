@@ -91,6 +91,7 @@ TEXT = {
         "err_timeout": "استغرق الطلب وقتًا طويلاً، يرجى المحاولة مرة أخرى.",
         "warn_429": "عدد الطلبات كبير حاليًا، يرجى المحاولة بعد قليل",
         "err_generic": "حدث خطأ غير متوقع.",
+        "busy": "جارٍ التحميل...",
         "internal_warn": (
             "تنبيه داخلي: تم الاستشهاد بمواد لم يتم استرجاعها فعليًا: {x}"
         ),
@@ -142,6 +143,7 @@ TEXT = {
         "err_timeout": "The request took too long. Please try again.",
         "warn_429": "Too many requests right now. Please try again shortly.",
         "err_generic": "An unexpected error occurred.",
+        "busy": "Loading...",
         "abstain": (
             "This is not covered in the indexed text of Labor Law No. 14 of 2025, "
             "so I can't answer it. Please rephrase your question or consult a licensed lawyer."
@@ -532,6 +534,54 @@ header[data-testid="stHeader"] {
 
 }
 
+/* ------------------------------------------------------------
+   Loading feedback
+   Streamlit re-runs the whole script on every click (language
+   switch, example question, ...). While it runs, show a progress
+   bar + a centered "Loading..." pill so the user knows something
+   is happening. Two selectors: current Streamlit uses
+   data-test-script-state, older versions used data-teststate.
+   ------------------------------------------------------------ */
+
+@keyframes elr-bar {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+
+@keyframes elr-spin {
+    to { transform: rotate(360deg); }
+}
+
+[data-testid="stApp"][data-test-script-state="running"]::before,
+.stApp[data-teststate="running"]::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 30%;
+    height: 3px;
+    background: #b8860b;
+    z-index: 1000000;
+    animation: elr-bar 1.1s ease-in-out infinite;
+    pointer-events: none;
+}
+
+[data-testid="stApp"][data-test-script-state="running"]::after,
+.stApp[data-teststate="running"]::after {
+    content: "__BUSY__";
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: .45rem 1rem;
+    border-radius: 999px;
+    background: rgba(30, 30, 30, .88);
+    color: #fff;
+    font-size: .9rem;
+    z-index: 1000000;
+    pointer-events: none;
+}
+
 </style>
 """
 
@@ -541,7 +591,8 @@ st.markdown(
     .replace("__BODY__", t["body_font"])
     .replace("__HEAD__", t["head_font"])
     .replace("__H1__", t["h1"])
-    .replace("__ANSWER__", t["answer"]),
+    .replace("__ANSWER__", t["answer"])
+    .replace("__BUSY__", t["busy"]),
     unsafe_allow_html=True,
 )
 
