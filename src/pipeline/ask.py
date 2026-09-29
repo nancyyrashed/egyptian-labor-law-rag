@@ -95,6 +95,29 @@ SYSTEM_PROMPT = f"""أنت مساعد معلومات قانونية متخصص �
    حرفياً في أي منهما.
 """
 
+# Appended to the system prompt when the user is on the English site.
+# Retrieval, the corpus, the Arabic prompt rules and the abstention phrase
+# are all unchanged - the model just writes its answer in English. The
+# abstention phrase deliberately stays in Arabic so ABSTAIN_PHRASE detection
+# keeps working; the frontend shows its own English message for it.
+ENGLISH_ADDENDUM = """
+
+LANGUAGE OVERRIDE - the user is reading the English version of the site:
+- Write the ENTIRE answer in clear English, faithfully translating what the
+  Arabic articles say. Keep every number, duration, percentage, condition and
+  exception exactly as in the article; do not add, drop or soften anything.
+- Rule 2 is unchanged: if the answer is not clearly in the retrieved articles,
+  reply with the exact Arabic phrase only, untranslated.
+- Rules 3 and 4 apply, but write them in English: put the sources on their own
+  line in exactly this form: "Source: Article X" or "Sources: Articles X, Y",
+  and write the short "general legal information, not legal advice" reminder
+  in English.
+"""
+
+
+def get_system_prompt(lang="ar"):
+    return SYSTEM_PROMPT + ENGLISH_ADDENDUM if lang == "en" else SYSTEM_PROMPT
+
 
 def load_resources():
     embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
@@ -136,7 +159,7 @@ def build_user_prompt(question, retrieved_chunks):
 سؤال المستخدم: {question}"""
 
 
-def call_groq(groq_client, question, retrieved_chunks):
+def call_groq(groq_client, question, retrieved_chunks, lang="ar"):
     user_prompt = build_user_prompt(question, retrieved_chunks)
 
     kwargs = {}
@@ -146,7 +169,7 @@ def call_groq(groq_client, question, retrieved_chunks):
     response = groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": get_system_prompt(lang)},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0,  # low temperature - this is a grounded-fact task, not creative writing
@@ -187,7 +210,9 @@ def extract_cited_articles(answer_text):
     would silently drop any citation the model put on a second
     "المصدر" line instead.
     """
-    lines = re.findall(r'المصدر[^\n]*', answer_text)
+    # Also matches the English citation line ("Source: Article 90") used
+    # when the site language is English.
+    lines = re.findall(r'(?:المصدر|Sources?[\s*_]*:)[^\n]*', answer_text)
     if not lines:
         return set()
 
@@ -208,13 +233,13 @@ def extract_cited_articles(answer_text):
     return all_numbers
 
 
-def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=True):
+def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=True, lang="ar"):
     t0 = time.perf_counter()
     retrieved_chunks = retrieve(embed_model, collection, question, top_k)
     t1 = time.perf_counter()
     retrieved_article_numbers = {c["article_number"] for c in retrieved_chunks}
 
-    answer_text = call_groq(groq_client, question, retrieved_chunks)
+    answer_text = call_groq(groq_client, question, retrieved_chunks, lang)
     t2 = time.perf_counter()
     timing = {"retrieve_s": round(t1 - t0, 3), "groq_s": round(t2 - t1, 3)}
 
@@ -229,6 +254,7 @@ def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=Tru
 
     result = {
         "question": question,
+        "lang": lang,
         "answer": answer_text,
         "retrieved_articles": sorted(retrieved_article_numbers),
         "cited_articles": sorted(cited_articles),
