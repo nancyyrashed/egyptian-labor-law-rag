@@ -104,7 +104,8 @@ TEXT = {
             "ما هي ساعات العمل اليومية القصوى؟",
             "كيف يتم احتساب أجر العمل الإضافي؟",
             "ما هي حقوق العاملة بعد الولادة؟",
-            "متى يحق لصاحب العمل فصل العامل؟"
+            "متى يحق لصاحب العمل فصل العامل؟",
+            "ما هو الحد الأدنى للأجور؟",
         ],
         "head_font": "'Amiri', serif",
         "body_font": "'Tajawal', sans-serif",
@@ -142,6 +143,10 @@ TEXT = {
         "err_timeout": "The request took too long. Please try again.",
         "warn_429": "Too many requests right now. Please try again shortly.",
         "err_generic": "An unexpected error occurred.",
+        "abstain": (
+            "This is not covered in the indexed text of Labor Law No. 14 of 2025, "
+            "so I can't answer it. Please rephrase your question or consult a licensed lawyer."
+        ),
         "internal_warn": (
             "Internal warning: cited articles that were not actually retrieved: {x}"
         ),
@@ -155,7 +160,8 @@ TEXT = {
             "What are the maximum daily working hours?",
             "How is overtime pay calculated?",
             "What are a mother's rights after childbirth?",
-            "When can an employer dismiss a worker?"
+            "When can an employer dismiss a worker?",
+            "What is the minimum wage?",
         ],
         "head_font": "'Source Serif 4', Georgia, serif",
         "body_font": "'Inter', sans-serif",
@@ -582,7 +588,7 @@ def _load_pipeline():
 
 
 @st.cache_data(max_entries=500, show_spinner=False)
-def _answer_direct(question: str) -> dict:
+def _answer_direct(question: str, lang: str = "ar") -> dict:
     """
     Direct mode: run the Phase 2 pipeline in-process. Successful answers are
     cached (repeat questions are instant); exceptions are never cached.
@@ -591,10 +597,10 @@ def _answer_direct(question: str) -> dict:
     from ask import ask
 
     embed_model, collection, groq_client = _load_pipeline()
-    return ask(embed_model, collection, groq_client, question, verbose=False)
+    return ask(embed_model, collection, groq_client, question, verbose=False, lang=lang)
 
 
-def ask_api(question: str) -> dict:
+def ask_api(question: str, lang: str = "ar") -> dict:
     """
     Answer a question, via the FastAPI backend ("api" mode, default) or
     in-process ("direct" mode).
@@ -610,7 +616,7 @@ def ask_api(question: str) -> dict:
     if RAG_MODE == "direct":
 
         try:
-            result = _answer_direct(" ".join(question.split()))
+            result = _answer_direct(" ".join(question.split()), lang)
 
         except Exception as e:
 
@@ -635,7 +641,7 @@ def ask_api(question: str) -> dict:
 
         response = requests.post(
             API_URL,
-            json={"question": question},
+            json={"question": question, "lang": lang},
             timeout=30,
         )
 
@@ -763,7 +769,7 @@ def render_assistant(msg: dict) -> None:
     if result["is_abstention"]:
 
         st.warning(
-            result["answer"]
+            t["abstain"] if st.session_state.lang == "en" else result["answer"]
         )
 
         return
@@ -921,7 +927,7 @@ if question:
 
     with st.spinner(t["spinner"]):
 
-        reply = ask_api(question)
+        reply = ask_api(question, st.session_state.lang)
 
 
     # -------------------------------------------------------------
