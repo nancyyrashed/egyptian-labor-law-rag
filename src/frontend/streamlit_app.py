@@ -13,12 +13,48 @@ Requires the FastAPI server already running:
     uvicorn src.api.main:app --reload
 """
 
+# Some hosts (notably Streamlit Community Cloud) ship an old system SQLite
+# that Chroma may reject. If pysqlite3-binary is installed, use its newer
+# SQLite instead. Harmless no-op everywhere else (e.g. Windows, no package).
+try:
+    __import__("pysqlite3")
+    import sys as _sys
+
+    _sys.modules["sqlite3"] = _sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
 import html
+import os
+import sys
+
 import requests
 import streamlit as st
 
 
-API_URL = "http://localhost:8000/ask"
+# Overridable so the same code runs locally (default) and inside the
+# Docker image, where the API is reachable at 127.0.0.1 inside the container.
+API_URL = os.getenv("API_URL", "http://localhost:8000/ask")
+
+# RAG_MODE selects HOW questions are answered:
+#   "api"    (default) - call the separate FastAPI backend at API_URL.
+#                        Used locally and in the Docker image.
+#   "direct"           - run the pipeline (ask.py) inside this Streamlit
+#                        process, no separate API. Used on Streamlit
+#                        Community Cloud, which only runs the Streamlit app.
+# On Streamlit Community Cloud it is set in the app's Secrets. Secrets are
+# not visible at import time on every host, so it is resolved lazily below.
+def _rag_mode() -> str:
+    mode = os.getenv("RAG_MODE")
+    if not mode:
+        try:
+            mode = st.secrets.get("RAG_MODE")
+        except Exception:
+            mode = None
+    return (mode or "api").strip().lower()
+
+
+RAG_MODE = _rag_mode()
 
 
 # ---------------------------------------------------------------- texts
@@ -37,6 +73,7 @@ TEXT = {
         ),
         "placeholder": "اكتب سؤالك عن قانون العمل...",
         "spinner": "جارٍ البحث في القانون...",
+        "loading": "جارٍ تحميل النظام لأول مرة، قد يستغرق ذلك دقيقة أو أكثر...",
         "about_title": "عن المساعد",
         "about_text": (
             "يبحث في نصوص قانون العمل رقم 14 لسنة 2025 ويجيب بالاستناد إلى المواد "
@@ -87,6 +124,7 @@ TEXT = {
         ),
         "placeholder": "Ask a question about the labor law...",
         "spinner": "Searching the law...",
+        "loading": "Loading the system for the first time - this can take a minute or more...",
         "about_title": "About",
         "about_text": (
             "Searches the text of Labor Law No. 14 of 2025 and answers only from "
@@ -507,17 +545,91 @@ st.markdown(
 # ---------------------------------------------------------------- API helper
 
 
+@st.cache_resource(show_spinner=False)
+def _load_pipeline():
+    """
+    Direct mode only: load the embedding model, Chroma collection and Groq
+    client ONCE per server process and share them across all sessions.
+    """
+
+    sys.path.insert(
+        0,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline"),
+    )
+
+    # Streamlit Community Cloud keeps secrets in st.secrets; make the Groq
+    # key visible to the Groq client (which reads the environment).
+    if not os.getenv("GROQ_API_KEY"):
+        try:
+            os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+        except Exception:
+            pass
+
+    from ask import load_resources
+
+    resources = load_resources()
+
+    # Log peak memory so the host's RAM limit can be checked against reality.
+    try:
+        import resource  # Linux/macOS only
+
+        peak_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+        print(f"[memory] peak RSS after loading pipeline: {peak_mb:.0f} MB", flush=True)
+    except Exception:
+        pass
+
+    return resources
+
+
+@st.cache_data(max_entries=500, show_spinner=False)
+def _answer_direct(question: str) -> dict:
+    """
+    Direct mode: run the Phase 2 pipeline in-process. Successful answers are
+    cached (repeat questions are instant); exceptions are never cached.
+    """
+
+    from ask import ask
+
+    embed_model, collection, groq_client = _load_pipeline()
+    return ask(embed_model, collection, groq_client, question, verbose=False)
+
+
 def ask_api(question: str) -> dict:
     """
-    Call the FastAPI backend.
+    Answer a question, via the FastAPI backend ("api" mode, default) or
+    in-process ("direct" mode).
 
-    The backend remains responsible for:
+    Either way the backend logic remains responsible for:
     - retrieval
     - generation
     - citations
     - abstention
     - answer structure
     """
+
+    if RAG_MODE == "direct":
+
+        try:
+            result = _answer_direct(" ".join(question.split()))
+
+        except Exception as e:
+
+            if getattr(e, "status_code", None) == 429:
+                return {
+                    "kind": "warning",
+                    "key": "warn_429",
+                }
+
+            print(f"[ERROR] direct ask failed: {type(e).__name__}: {e}", flush=True)
+
+            return {
+                "kind": "error",
+                "key": "err_generic",
+            }
+
+        return {
+            "result": result,
+        }
 
     try:
 
@@ -756,6 +868,19 @@ st.markdown(
     f'<div class="notice">{t["disclaimer"]}</div>',
     unsafe_allow_html=True,
 )
+
+
+# ---------------------------------------------------------------- warm-up (direct mode)
+
+# In direct mode the first visitor triggers the model load. Do it here, with
+# a visible message, instead of leaving the first question hanging. After the
+# first load it is cached for every later visitor and question.
+
+if RAG_MODE == "direct":
+
+    with st.spinner(t["loading"]):
+
+        _load_pipeline()
 
 
 # ---------------------------------------------------------------- question input
