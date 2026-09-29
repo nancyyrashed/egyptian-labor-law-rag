@@ -76,6 +76,7 @@ def startup():
 
 class AskRequest(BaseModel):
     question: str
+    lang: str = "ar"  # "ar" | "en" - language the answer is written in
 
 
 class AskResponse(BaseModel):
@@ -95,6 +96,7 @@ def health():
 @app.post("/ask", response_model=AskResponse)
 def ask_endpoint(request: AskRequest):
     question = request.question.strip()
+    lang = "en" if request.lang == "en" else "ar"
 
     if not question:
         raise HTTPException(status_code=400, detail="السؤال فارغ")
@@ -105,7 +107,8 @@ def ask_endpoint(request: AskRequest):
             detail="النظام لا يزال قيد التحميل، يرجى المحاولة بعد قليل",
         )
 
-    cache_key = " ".join(question.split())
+    # Language is part of the key: same question, different language answer.
+    cache_key = f"{lang}|" + " ".join(question.split())
     if cache_key in _cache:
         _cache.move_to_end(cache_key)
         return _cache[cache_key]
@@ -117,6 +120,7 @@ def ask_endpoint(request: AskRequest):
             _resources["groq_client"],
             question,
             verbose=False,
+            lang=lang,
         )
     except Exception as e:
         # Groq's rate-limit error exposes a status_code attribute in
