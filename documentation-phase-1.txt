@@ -1,0 +1,390 @@
+# Phase 1 — Embedding Model Selection, Article-Aware Chunking, and Vector Storage
+
+## Objective
+
+With Phase 0 producing a validated corpus of 298 structured article records, Phase 1's goal was to turn that corpus into a working retrieval system: select an embedding model proven to retrieve the correct article for a real question, split articles into properly-sized chunks without breaking their legal structure, and store the result in a persistent vector database.
+
+Three questions had to be answered with evidence, not assumption:
+
+* Does the chosen embedding model actually retrieve the correct article for a real question, not just produce plausible-looking vectors?
+* Which articles are actually too long for the embedding model's token limit, and how should they be split without destroying their legal structure?
+* Does the final, stored, chunked database retrieve as well as the original unchunked test showed it would?
+
+---
+
+# Step 1 — Article Length Distribution
+
+Before making any chunking decisions, the real distribution of article lengths across all 298 records was examined, rather than assuming a single strategy would fit every article.
+
+```text
+Total articles: 298
+Min: 59 characters
+Max: 6767 characters
+Median: 357 characters
+Average: 468.0 characters
+
+   <200: 51 articles
+200-500: 152 articles
+500-1000: 78 articles
+1000-2000: 16 articles
+2000+: 1 article
+```
+
+94% of articles (281 of 298) were under 1,000 characters, with a single major outlier (Article 1, the definitions article, at 6,767 characters) and a small number of moderate outliers between 1,000–1,750 characters.
+
+Character count alone was not treated as sufficient to decide chunking, since embedding models truncate by **token** count, not character count, and Arabic text does not tokenize at a fixed characters-per-token ratio.
+
+---
+
+# Step 2 — Initial Token Length Check
+
+A tokenizer-level check was run against the 15 longest articles using a candidate multilingual embedding model (`paraphrase-multilingual-MiniLM-L12-v2`, max sequence length 128 tokens).
+
+```text
+Articles exceeding 128 tokens:
+1, 18, 20, 41, 79, 82, 101, 134, 148, 189, 249, 253, 257, 273, 274
+```
+
+This confirmed that a character-based threshold would have been unreliable — several articles well under 1,000 characters still exceeded the model's token limit due to Arabic's tokenization density.
+
+---
+
+# Step 3 — Hands-On Embedding Experiment (First Attempt)
+
+Before trusting the embedding model inside any pipeline, a direct experiment was run: two real sentences about the same topic (annual leave, phrased differently) and one real but unrelated sentence (the employer definition) were embedded, and cosine similarity was computed manually.
+
+```text
+A (Article 124, annual leave entitlement)
+B (Article 125, annual leave scheduling — same topic, different wording)
+C (Article 1, employer definition — unrelated topic)
+
+A vs B: 0.5397
+A vs C: 0.6248
+B vs C: 0.3831
+```
+
+This result was unexpected and concerning: the unrelated pair (A vs C) scored *higher* than the same-topic pair (A vs B). A likely explanation was shared surface vocabulary between A and C (both contain forms of "أجر" and "العامل") despite being topically unrelated, while B expressed the same idea as A using largely different words.
+
+This finding meant a single sentence-pair comparison was not sufficient evidence to trust the model, and a more rigorous test was required before proceeding.
+
+---
+
+# Step 4 — Full-Corpus Retrieval Test Design
+
+Rather than continue testing isolated sentence pairs, a realistic retrieval simulation was built: four real questions, phrased naturally rather than copied from the article text, each with a correct-answer article verified by direct inspection of the corpus.
+
+```text
+Q1: كم مدة فترة الاختبار المسموح بها للعامل؟        → Article 90  (probation period)
+Q2: ما هو الحد الأقصى لساعات العمل اليومية؟          → Article 117 (max daily working hours)
+Q3: كم مدة إجازة الوضع للعاملة الحامل؟               → Article 54  (maternity leave)
+Q4: ما هي مدة الإجازة السنوية للعامل؟                 → Article 124 (annual leave)
+```
+
+For each question, all 298 articles were embedded and ranked by cosine similarity to the question, and the rank of the verified correct article was recorded. This tests whether the model retrieves the right answer from the full corpus, not just whether two chosen sentences look similar to each other.
+
+None of the four correct answer articles exceeded the 128-token limit, so this test isolated retrieval quality from chunking concerns.
+
+---
+
+# Step 5 — Embedding Model Comparison
+
+Three candidate models were tested against the same four questions:
+
+```text
+paraphrase-multilingual-MiniLM-L12-v2
+paraphrase-multilingual-mpnet-base-v2
+intfloat/multilingual-e5-base
+```
+
+## Results — paraphrase-multilingual-mpnet-base-v2
+
+```text
+Q1 (Article 90):  rank 1  | top 5: [90, 126, 128, 167, 166]
+Q2 (Article 117): rank 2  | top 5: [65, 117, 119, 118, 121]
+Q3 (Article 54):  rank 40 | top 5: [128, 56, 58, 57, 119]  — MISS
+Q4 (Article 124): rank 43 | top 5: [128, 126, 125, 163, 159] — MISS
+
+Top-5 hit rate: 50%
+```
+
+## Results — paraphrase-multilingual-MiniLM-L12-v2
+
+```text
+Top-5 hit rate: 50%
+Average rank of correct article: 15.2
+```
+
+## Results — intfloat/multilingual-e5-base
+
+```text
+Q1 (Article 90):  rank 1 | top 5: [90, 126, 128, 167, 166]
+Q2 (Article 117): rank 2 | top 5: [65, 117, 119, 118, 121]
+Q3 (Article 54):  rank 1 | top 5: [54, 55, 57, 58, 56]
+Q4 (Article 124): rank 3 | top 5: [128, 126, 124, 131, 125]
+
+Top-5 hit rate: 100%
+Average rank of correct article: 1.8
+```
+
+## Final comparison
+
+```text
+paraphrase-multilingual-MiniLM-L12-v2   | hit rate 50%  | avg rank 15.2
+paraphrase-multilingual-mpnet-base-v2   | hit rate 50%  | avg rank 21.5
+intfloat/multilingual-e5-base           | hit rate 100% | avg rank 1.8
+```
+
+## Analysis
+
+The two failures under the paraphrase-style models shared a consistent pattern: the model correctly identified the right *topic cluster* (e.g. retrieving articles 56, 57, 58 — all genuinely about maternity — for a maternity question) but failed to rank the single most specific correct article (54) above its close neighbors.
+
+This is consistent with a known limitation of `paraphrase-*` models: they are trained for **symmetric** similarity (is sentence A similar to sentence B?), not **asymmetric** retrieval (does this short question match this longer passage?). `intfloat/multilingual-e5-base` is trained specifically for asymmetric query-to-passage retrieval, which explains its substantially better performance on exactly this kind of task.
+
+**Decision: `intfloat/multilingual-e5-base` was selected**, based on measured retrieval performance rather than general reputation or size. This model requires `"query: "` / `"passage: "` prefixes at encode time for correct behavior — this is not optional and was applied consistently in every subsequent step.
+
+---
+
+# Step 6 — Token Length Check Repeated for the Selected Model
+
+The token length check from Step 2 was repeated using the selected model's tokenizer (`intfloat/multilingual-e5-base`, max sequence length 512 tokens — substantially longer than the previously tested model).
+
+```text
+Articles exceeding 512 tokens: 1, 41, 79, 134, 253
+```
+
+This reduced the list of articles requiring splitting from 15 (under the rejected model) to 5 (under the selected model), demonstrating that the chunking requirement is model-dependent and must be re-verified whenever the embedding model changes.
+
+---
+
+# Step 7 — Hands-On Embedding Experiment, Repeated With the Selected Model
+
+The Step 3 experiment was repeated using `intfloat/multilingual-e5-base` with the required `"passage: "` prefix applied to both sentences.
+
+```text
+A vs B: 0.9419
+A vs C: 0.8798
+B vs C: 0.8740
+```
+
+The ranking is now correct: the same-topic pair (A vs B) scores clearly higher than either pairing involving the unrelated sentence, consistent with the full-corpus retrieval result in Step 5.
+
+---
+
+# Step 8 — Structural Inspection of the 5 Long Articles
+
+Before deciding how to split the 5 flagged articles, their actual structure was inspected rather than applying an arbitrary character-based cut.
+
+```text
+Article 1   (definitions, 38 items) — numbered list: ١- ، ٢- ، ٣- ...
+Article 41  (3 items)               — numbered list
+Article 79  (14 items)              — numbered list
+Article 134 (11 items)              — numbered list
+Article 253                         — NO numbered structure; ~7 continuous prose paragraphs
+```
+
+Four of the five articles have a natural numbered-item structure suitable for splitting at item boundaries. Article 253 has no such structure and required a different approach.
+
+Each numbered article also has a framing sentence preceding its list (e.g. Article 134 opens with "يجب على العامل ما يأتي:" — "the worker must do the following:"). This framing line needed to be preserved in every resulting chunk so a chunk containing only one duty still reads as "one of the worker's duties," not an unexplained fragment.
+
+---
+
+# Step 9 — Numbered-Item Detection: Two Real Bugs Found and Fixed
+
+An initial regex to detect numbered item markers at the start of a line was tested against the 5 flagged articles and produced incorrect counts (e.g. 33 matches found in Article 1 instead of the expected 38).
+
+## Bug 1 — optional spacing
+
+Some items in the corpus have a space between the digit and the following dash (e.g. `"١٤ - إقامة"`), which the initial pattern did not allow for.
+
+## Bug 2 — mixed digit systems
+
+Inspection of the raw matches revealed that the source PDF mixes **two different digit systems** within the same numbered list: standard Arabic-Indic digits (`٠-٩`, U+0660–0669) and Extended Arabic-Indic/Persian digits (`۰-۹`, U+06F0–06F9). For example, Article 1's list uses `٢٧` (standard) immediately followed by `۲۸` (Persian-style) before returning to standard digits.
+
+## Fix
+
+The pattern was corrected to allow optional spacing and both digit ranges:
+
+```python
+ITEM_PATTERN = re.compile(r'(?:^|\n)\s*([٠-٩۰-۹]{1,3})\s*[-–]\s*')
+```
+
+Re-testing against all 5 articles produced the expected counts exactly:
+
+```text
+Article 1:   38 items
+Article 41:   3 items
+Article 79:  14 items
+Article 134: 11 items
+Article 253:  0 items (confirmed — no numbered structure)
+```
+
+---
+
+# Step 10 — Chunking Strategy and Implementation
+
+The chunking pipeline (`src/pipeline/chunk_articles.py`) applies the following logic:
+
+* **293 articles** (not flagged as too long) → kept as one chunk each.
+* **4 numbered articles** (1, 41, 79, 134) → split at item boundaries, grouping consecutive items to stay under a character budget (1,200 characters, chosen as a proxy based on observed character-per-token ratios in this corpus), with the article's opening framing line prepended to every resulting chunk.
+* **Article 253** → split differently, described in Step 11.
+
+Each chunk record carries: `article_number`, `law_name`, `source`, `page`, `chunk_index`, and `item_range` (e.g. `"4-6"` for a chunk covering items 4 through 6, or `null` for an unsplit article).
+
+Initial run result:
+
+```text
+Total chunks: 308
+Articles left as 1 chunk: 293 (expected 293)
+Article 1 split into 7 chunks
+Article 41 split into 2 chunks
+Article 79 split into 2 chunks
+Article 134 split into 2 chunks
+Article 253 split into 2 chunks
+
+Longest chunk: 1527 characters
+```
+
+---
+
+# Step 11 — Article 253: A Line-Wrap Bug Found by Manual Inspection
+
+Article 253 has no numbered structure, so it was initially split by treating each line of the stored text as a paragraph. Manual inspection of the resulting chunk boundary revealed a real defect: the second chunk began mid-sentence ("داهم على صحة العاملين..."), continuing a sentence whose first half ("...وجود خطر") ended the first chunk.
+
+## Root cause
+
+The article's stored text preserves the PDF's original line-wrapping, which does not align with sentence boundaries — a single sentence can be wrapped across two physical lines purely due to the PDF's rendering width. Treating each line as a "paragraph" therefore risked cutting a chunk in the middle of a sentence.
+
+## Fix
+
+The splitting logic for structure-less articles was changed to first rejoin all lines into continuous text (undoing the PDF's line-wrapping), then split on actual sentence-ending periods, and only then group the resulting real sentences under the character budget.
+
+Re-running confirmed the fix: the chunk boundary for Article 253 now falls exactly at a real sentence end ("...إزالة الخطر .") with the next chunk beginning a genuinely new sentence ("وفى حالة امتناع...").
+
+---
+
+# Step 12 — Token-Overflow Edge Case in a Single Item
+
+After chunking produced 308 chunks, a real tokenizer check against `intfloat/multilingual-e5-base` (rather than the character-based proxy) was run against every chunk.
+
+```text
+[transformers] Token indices sequence length is longer than the specified
+maximum sequence length for this model (538 > 512)
+WARNING: 1 chunk still exceeds 512 tokens:
+  Article 1, chunk 1: 538 tokens
+```
+
+## Investigation
+
+The flagged chunk corresponded to a single numbered item — Article 1's definition of "wage" (item 4) — which is itself unusually long, containing 9 lettered sub-points, (أ) through (ط). Because the chunking logic kept a single long item whole by design (to avoid cutting mid-item when grouping), this one item exceeded the model's hard token limit on its own; the character-based budget (1,200 characters) had not caught it, since this particular passage's vocabulary tokenized more densely than the corpus average.
+
+## Root cause
+
+`group_items_by_budget()` only flushed the current group before adding a new item, and only when the group already had content — so a single item that was too large on its own had no fallback path.
+
+## Fix
+
+A fallback was added for exactly this case: if a single item's text (plus the article's opening line) would exceed the budget entirely on its own, it is now split further by sentence, reusing the sentence-splitting logic already built for Article 253 in Step 11, instead of being kept as one oversized chunk.
+
+## Result
+
+Re-running the chunker produced 309 chunks (up from 308), and the real tokenizer verification passed cleanly:
+
+```text
+All 309 chunks are within the 512-token limit.
+```
+
+---
+
+# Step 13 — Embedding and Chroma Storage
+
+With a finalized, fully-verified set of 309 chunks, the storage step (`src/pipeline/embed_and_store.py`) was implemented:
+
+* Loads `labor_law_chunks.json` (309 chunks).
+* Encodes every chunk with `intfloat/multilingual-e5-base`, using the `"passage: "` prefix the model requires for indexed content — the same convention validated during model selection.
+* Stores each embedding in a **persistent** local Chroma collection (`data/chroma/`, collection name `labor_law_chunks`), together with full metadata per chunk: `article_number`, `law_name`, `source`, `page`, `chunk_index`, `item_range`.
+* Rebuilds the collection from scratch on each run (drops and recreates it first), so re-running after any future re-chunking does not leave stale or duplicate entries behind.
+* Handles a real Chroma constraint the raw chunk data did not originally account for: metadata values cannot be `None`. Since `item_range` is `None` for every unsplit article (293 of 309 chunks), this was substituted with an empty string for storage.
+
+---
+
+# Step 14 — End-to-End Retrieval Verification Against the Real Stored Collection
+
+Model selection (Step 5) validated retrieval quality using an in-memory comparison against the raw, unchunked articles. That confirmed the *model* worked, but not that the *actual built database* — after chunking, embedding, and Chroma storage — retrieved just as well. A final verification step re-ran the same 4 verified test questions directly against the persisted Chroma collection.
+
+```text
+Question topic              | Expected article | Found? | Rank
+Probation period             | 90                | Yes    | 1
+Max daily working hours      | 117               | Yes    | 2
+Maternity leave duration     | 54                | Yes    | 1
+Annual leave duration        | 124               | Yes    | 3
+
+Top-5 hit rate: 100% (4/4)
+Average rank of hits: 1.8
+```
+
+Both figures match the pre-chunking model-selection baseline from Step 5 exactly, confirming that chunking and real Chroma storage introduced no retrieval regression.
+
+Article 124 ranking 3rd (rather than 1st) is not a chunking artifact — it reflects genuine semantic overlap between the core annual-leave entitlement article and neighboring procedural articles (125, 126, 128, 131) that also discuss leave duration and conditions. This same pattern was already present before chunking. The practical implication carried into Phase 2 is that retrieval should use `top_k >= 5` rather than assume the single top-ranked result is always the correct source article.
+
+---
+
+# Phase 1 Outcome
+
+Egyptian Labor Law's 298 structured articles have been converted into a verified, retrieval-ready vector database.
+
+The final pipeline confirms:
+
+```text
+Embedding model selected: intfloat/multilingual-e5-base
+  (chosen by measured retrieval performance: 100% top-5 hit rate,
+  average rank 1.8, vs 50% for both alternative candidates tested)
+
+Articles requiring split (model-specific): 5 of 298
+Total chunks produced: 309
+Chunks exceeding the model's 512-token limit: 0
+
+Full-corpus retrieval test (pre-chunking baseline): 100% top-5 hit rate
+End-to-end retrieval test (real Chroma collection): 100% top-5 hit rate
+  — no regression introduced by chunking or storage
+```
+
+The canonical sources for Phase 2 are:
+
+```text
+data/processed/labor_law_chunks.json   (309 finalized chunk records)
+data/chroma/                            (persistent vector database,
+                                          collection: labor_law_chunks)
+```
+
+---
+
+# Updated Code Organization
+
+```text
+src/
+├── exploration/
+│   ├── check_arabic_variants.py
+│   ├── inspect_embedded_font.py
+│   ├── inspect_pdf.py
+│   ├── inspect_repeated_boilerplate.py
+│   ├── check_suspicious_arabic_spaces.py
+│   └── inspect_remaining_spacing.py
+│
+├── pipeline/
+│   ├── build_knowledge_base.py
+│   ├── normalize_arabic.py
+│   ├── parse_articles.py
+│   ├── chunk_articles.py          ← new
+│   └── embed_and_store.py         ← new
+│
+└── validation/
+    ├── check_remaining_pua.py
+    ├── final_quality_check_v2.py
+    ├── check_article_headings.py
+    ├── test_embeddings.py         ← new (token check + hands-on similarity experiment)
+    └── test_retrieval.py          ← new (full-corpus, multi-model retrieval comparison)
+```
+
+**Phase 1 — Embedding Model Selection, Article-Aware Chunking, and Vector Storage: COMPLETE.**
+
+The system is now ready for **Phase 2 — Retrieval, Generation, and Evaluation**.

@@ -1,0 +1,115 @@
+# Phase 2 — Retrieval, Generation & Citation Verification
+
+This covers the RAG loop itself (`ask.py`): retrieval → constrained generation →
+citation parsing, a mid-project Groq model migration, three rounds of citation-
+extraction hardening driven by real test output, a resilience fix for the
+evaluation loop, and end-to-end verification against real questions, including
+two manual spot-checks of model claims against the source law text.
+
+## 1. Building the RAG loop (`ask.py`)
+
+The script implementing the actual retrieval → generation → citation loop, in
+plain Python, no framework:
+
+- Embeds the user's Arabic question with the `"query: "` prefix (same e5
+  convention validated in Phase 1).
+- Queries the persisted Chroma collection for the top-5 most similar chunks.
+- Builds a system prompt (in Arabic) that constrains the model to:
+  - answer only from the retrieved article text, not general legal knowledge;
+  - abstain with one **fixed, exact phrase** (`غير موجود في القانون المفهرس`)
+    if the answer isn't actually supported by the retrieved context, kept as a
+    Python constant so it can be checked programmatically rather than by
+    eyeballing the text;
+  - end every real answer with a citation line naming the specific article
+    number(s) used, plus the "legal information, not legal advice" disclaimer.
+- Sends the constructed prompt to Groq and returns the answer text.
+
+## 2. Citation-extraction hardening (three rounds, each triggered by real output)
+
+The function that parses which article numbers the model claims to have used
+(`extract_cited_articles()`) went through three fixes, each one driven by an
+actual failure mode spotted in real test output rather than a hypothetical one:
+
+**Round 1 — scoping to the citation line itself.** The first version grabbed
+"everything after the first occurrence of `المصدر`," which happened to work only
+because the trailing disclaimer sentence never contained a digit. Since the
+citation line and the disclaimer don't always appear in the same order run to
+run, this was a real latent bug, not just a style concern. Fixed by scoping
+extraction to only the matched `المصدر` line itself (up to the next newline).
+
+**Round 2 — mixed digit systems.** The corpus (per Phase 1's `chunck_articles.py`
+findings) mixes Arabic-Indic (`٠-٩`) and Extended Arabic-Indic (`۰-۹`) digits with
+standard Latin digits. Every real model response so far had used Latin digits,
+but nothing enforced that. Added a normalization step that maps both Arabic
+digit systems to Latin before extracting numbers, so a citation written as
+`مادة ١٢٤` is read correctly instead of silently returning no citation at all.
+
+**Round 3 — multiple citation lines.** Real runs showed the model's citation
+behavior genuinely varies: sometimes one article is cited, sometimes two, and
+they've always appeared grouped on a single line (`المصدر: مادة 117، مادة 119`)
+so far — but nothing in the prompt actually forces that. The extraction function
+originally used `re.search`, which only returns the *first* match; changed to
+scan every line containing `المصدر`, so a citation ever put on a second line
+wouldn't be silently dropped.
+
+## 3. Resilience: per-question error handling + incremental saving
+
+**Problem:** the original loop only wrote results to disk after all questions
+finished, and had no error handling around the Groq call. A single transient
+failure (rate limit, timeout, network blip) on any one question — realistic
+when making 15-20 real API calls back to back for Phase 3 — would crash the
+whole run and lose every result computed before it, since nothing had been
+saved yet.
+
+**Fix:** each question now runs inside a `try/except`; a failure is recorded
+with its error message instead of crashing the script, and results are written
+to disk after *every* question rather than only at the end.
+
+## 4. End-to-end verification
+
+Ran the same 4 verified questions from Phase 1's retrieval test, plus one
+deliberately out-of-scope question (a criminal-law penalty question, with no
+answer in the labor law) to test abstention:
+
+| Question topic | Expected article | Cited article(s) | Hallucinated? |
+|---|---|---|---|
+| Probation period | 90 | 90 | No |
+| Max daily working hours | 117 | 117 (sometimes 117 + 119) | No |
+| Maternity leave duration | 54 | 54 | No |
+| Annual leave duration | 124 | 124 (sometimes 124 + 125) | No |
+| Criminal theft penalty (out of scope) | — | — (abstained) | N/A |
+
+**Result:** 5/5 correct behavior across repeated runs. Zero hallucinated
+citations in any run — every article number cited was confirmed to have
+actually been retrieved by Chroma for that question. Abstention fired cleanly
+and used the exact expected phrase, with zero citations, on the one question
+with no answer in the indexed law.
+
+**On the citation-count variance:** at `temperature=0.1`, re-running the same
+question can legitimately produce a different (not necessarily wrong) response
+- sometimes citing only the primary article, sometimes also citing a genuinely
+related secondary article the retrieval step surfaced (e.g. Article 125's
+minimum-leave-block rule alongside Article 124's leave-duration table, or
+Article 119's total-daily-span rule alongside Article 117's actual-working-hours
+limit). This reflects real overlap between neighboring articles in the corpus,
+not a bug - retrieval's `top_k=5` deliberately keeps these related articles
+available, and which of them get cited varies by run.
+
+**Manual verification against source text.** Two secondary citations were
+checked directly against `labor_law_articles.json` rather than trusted at face
+value:
+
+- **Article 125** claim ("a minimum 15-day leave block, with at least 6
+  consecutive days") matches the source text verbatim in meaning: *"يجب أن
+  يحصل العامل على إجازة سنوية مدتها خمسة عشر يومًا، منها ستة أيام متصلة على
+  الأقل."* Confirmed accurate, and correctly scoped as a scheduling safeguard
+  rather than a competing leave-duration rule.
+- **Article 119** claim ("total daily span, including breaks, capped at 10
+  hours") matches the source text: *"لا تجاوز الفترة بين بداية ساعات العمل
+  ونهايتها أكثر من عشر ساعات فى اليوم الواحد."* Confirmed accurate, and
+  correctly distinguished from Article 117's separate 8-hour *actual working
+  time* limit rather than being conflated into one number.
+
+Both checks confirm real multi-article synthesis without merging distinct rules
+into an incorrect combined one - the specific failure mode the system prompt's
+rule against combining articles was written to prevent.

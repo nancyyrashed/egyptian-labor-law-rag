@@ -1,0 +1,23 @@
+# Runtime dependencies (used by Streamlit Community Cloud AND the Docker image).
+#
+# Force the small CPU-only PyTorch build. The default Linux build bundles
+# CUDA libraries (multiple GB) that this app never uses.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+
+sentence-transformers
+chromadb
+groq
+python-dotenv
+fastapi
+uvicorn
+pydantic
+requests
+streamlit
+
+# Newer SQLite for Chroma on hosts that ship an old one (Linux only; the
+# app falls back gracefully if this isn't installed).
+pysqlite3-binary; sys_platform == "linux"
+
+# IMPORTANT: pin the packages above to the exact versions from your working
+# local venv so every build matches what you tested (see the Phase 5 notes).

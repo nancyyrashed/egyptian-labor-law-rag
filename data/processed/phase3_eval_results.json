@@ -1,0 +1,562 @@
+[
+  {
+    "question": "كم مدة فترة الاختبار المسموح بها للعامل؟",
+    "topic": "probation period",
+    "category": "in_scope",
+    "expected_articles": [
+      90
+    ],
+    "retrieved_articles": [
+      72,
+      90,
+      126,
+      128,
+      143,
+      166,
+      167,
+      175
+    ],
+    "cited_articles": [
+      90
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "مدة فترة الاختبار المسموح بها للعامل هي لا تزيد عن ثلاثة أشهر.  \n\nالمصدر: مادة 90  \n\n*هذه المعلومات عامة ولا تُعدّ استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هو الحد الأقصى لساعات العمل اليومية؟",
+    "topic": "max daily working hours",
+    "category": "in_scope",
+    "expected_articles": [
+      117
+    ],
+    "retrieved_articles": [
+      65,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123
+    ],
+    "cited_articles": [
+      117
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "الحد الأقصى لساعات العمل اليومية هو ثمان ساعات.  \n\nالمصدر: مادة 117",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "كم مدة إجازة الوضع للعاملة الحامل؟",
+    "topic": "maternity leave duration",
+    "category": "in_scope",
+    "expected_articles": [
+      54
+    ],
+    "retrieved_articles": [
+      54,
+      55,
+      56,
+      57,
+      58,
+      124,
+      125,
+      128
+    ],
+    "cited_articles": [
+      54
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "إجازة الوضع للعاملة الحامل مدتها أربعة أشهر تشمل الفترة التي تسبق الوضع وتليه، ولا تقل مدة الإجازة بعد الوضع عن خمسة وأربعين يوماً.  \n\nالمصدر: مادة 54  \nتنويه: هذه المعلومات عامة ولا تُعدّ استشارة قانونية.",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي مدة الإجازة السنوية للعامل؟",
+    "topic": "annual leave duration",
+    "category": "in_scope",
+    "expected_articles": [
+      124
+    ],
+    "retrieved_articles": [
+      55,
+      57,
+      124,
+      125,
+      126,
+      128,
+      131,
+      173
+    ],
+    "cited_articles": [
+      124
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "مدة الإجازة السنوية للعامل تُحدَّد وفقًا لما نصت عليه المادة 124 من القانون كالتالي:\n\n- **السنة الأولى** من الخدمة: 15 يومًا.\n- **من السنة الثانية فصاعدًا**: 21 يومًا.\n- **لمن أمضى عشر سنوات أو أكثر لدى صاحب العمل** أو **لمن تجاوزت سنه خمسين عامًا**: 30 يومًا.\n- **للأشخاص ذوي الإعاقة والأقزام**: 45 يومًا.\n\nكما ينص القانون على أنه إذا كانت مدة خدمة العامل أقل من سنة، تُحسب إجازته بنسبة المدة التي قضاها في العمل بشرط أن يكون قد أمضى ستة أشهر على الأقل في خدمة صاحب العمل.  \n\nبالإضافة إلى ذلك، تُزاد مدة الإجازة السنوية **بسبعة أيام** للعمال الذين يعملون في الأعمال الخطرة أو المضرة بالصحة أو في المناطق النائية، وفقًا لقرار من الوزير المختص بعد أخذ رأي الجهات المعنية.\n\n**ملاحظة:** هذه المعلومات عامة ولا تُعد استشارة قانونية. يرجى مراجعة متخصص إذا كان لديك حالة خاصة.\n\nالمصدر: مادة 124.",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي مدة مهلة الإخطار بإنهاء عقد العمل غير محدد المدة؟",
+    "topic": "notice period for indefinite contract termination",
+    "category": "in_scope",
+    "expected_articles": [
+      156
+    ],
+    "retrieved_articles": [
+      58,
+      88,
+      154,
+      155,
+      156,
+      157,
+      164,
+      241
+    ],
+    "cited_articles": [
+      156
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "مدة مهلة الإخطار المطلوبة لإنهاء عقد العمل غير محدد المدة هي ثلاثة أشهر.  \n\nالمصدر: مادة 156",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "هل يجوز تشغيل الطفل بين الساعة السابعة مساءً والسابعة صباحًا؟",
+    "topic": "night work ban for children",
+    "category": "in_scope",
+    "expected_articles": [
+      65
+    ],
+    "retrieved_articles": [
+      54,
+      56,
+      59,
+      62,
+      64,
+      65,
+      66,
+      117
+    ],
+    "cited_articles": [
+      65
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "لا يجوز تشغيل الطفل بين الساعة السابعة مساءً والسابعة صباحًا، حيث يُحظر ذلك صراحةً في القانون.  \n\nالمصدر: مادة 65  \n\n*هذا الرد معلومات عامة ولا يُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هو الحد الأدنى لسن تشغيل الأطفال؟",
+    "topic": "minimum working age",
+    "category": "in_scope",
+    "expected_articles": [
+      62
+    ],
+    "retrieved_articles": [
+      57,
+      60,
+      61,
+      62,
+      64,
+      65,
+      66,
+      68
+    ],
+    "cited_articles": [
+      62
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "الحد الأدنى لسن تشغيل الأطفال هو خمسة عشر سنة؛ يُحظر تشغيل الأطفال قبل بلوغهم هذه السن، مع السماح بتدريبهم من سن الرابعة عشرة بشرط ألا يعوق ذلك مواصلة التعليم.  \n\nالمصدر: مادة 62  \nتنويه: هذه المعلومات عامة ولا تُعد استشارة قانونية.",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هو أجر العامل إذا تم تشغيله في يوم الراحة الأسبوعية؟",
+    "topic": "pay for work on the weekly rest day",
+    "category": "in_scope",
+    "expected_articles": [
+      121
+    ],
+    "retrieved_articles": [
+      65,
+      116,
+      117,
+      120,
+      121,
+      122,
+      124,
+      128
+    ],
+    "cited_articles": [
+      121
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "وفقًا للمادة 121 من قانون العمل المصري رقم 14 لسنة 2025، إذا تم تشغيل العامل في يوم الراحة الأسبوعية، يحق له أن يحصل على أجر يعادل أجره العادي كتعويض عن ذلك اليوم.  \n\nالمصدر: المادة 121.  \n\n*هذا الرد يُقدِّم معلومات قانونية عامة ولا يُعدّ استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي حالات الخطأ الجسيم التي يجوز معها فصل العامل؟",
+    "topic": "gross-misconduct grounds for dismissal",
+    "category": "in_scope",
+    "expected_articles": [
+      148
+    ],
+    "retrieved_articles": [
+      55,
+      91,
+      135,
+      138,
+      148,
+      150,
+      170,
+      173
+    ],
+    "cited_articles": [
+      148
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "حالات الخطأ الجسيم التي يجوز بموجبها فصل العامل وفقًا للقانون هي:\n\n1. **انتحال العامل شخصية غير صحيحة أو تقديم مستندات مزورة.**  \n2. **ارتكاب العامل خطأً أدى إلى أضرار جسيمة لصاحب العمل، بشرط أن يبلغ صاحب العمل الجهات المختصة بالواقعة أو الحادث خلال أربع وعشرين ساعة من علمه بوقوعه.**  \n3. **تكرار عدم مراعاة العامل التعليمات اللازمة لسلامة العمال أو المنشأة، بشرط أن تكون هذه التعليمات مكتوبة ومعلنة في مكان ظاهر، رغم التنبيه الكتابي عليه.**  \n4. **إفشاء العامل أسرار المنشأة التي يعمل بها، مما أدى إلى إحداث أضرار جسيمة بالمنشأة.**  \n5. **قيام العامل بمنافسة صاحب العمل في نفس النشاط.**  \n6. **وجود العامل في حالة سكر واضح أو متأثرًا بما تعاطاه من مادة مخدرة أثناء ساعات العمل.**  \n7. **اعتداء العامل على صاحب العمل أو المدير العام، أو ارتكاب اعتداء جسيم على أحد رؤسائه أثناء العمل أو بسببه.**  \n\nالمصدر: مادة 148.  \n\n*هذه المعلومات عامة ولا تُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي العقوبات التأديبية التي يجوز لصاحب العمل توقيعها على العامل؟",
+    "topic": "disciplinary sanctions",
+    "category": "in_scope",
+    "expected_articles": [
+      139
+    ],
+    "retrieved_articles": [
+      4,
+      94,
+      127,
+      138,
+      139,
+      140,
+      141,
+      241
+    ],
+    "cited_articles": [
+      139
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "العقوبات التأديبية التي يجوز لصاحب العمل توقيعها على العامل وفقًا للائحة تنظيم العمل واللائحة الداخلية للمنشأة هي:\n\n1. الإنذار الكتابي.  \n2. الخصم من الأجر الأساسي.  \n3. تأجيل موعد استحقاق العلاوة السنوية لمدة لا تتجاوز ثلاثة أشهر.  \n4. الحرمان من جزء من العلاوة السنوية، بما لا يتجاوز نصفها.  \n5. تأجيل الترقية عند استحقاقها لمدة لا تزيد على سنة.  \n6. خفض الأجر الأساسي بمقدار علاوة على الأكثر.  \n7. الخفض إلى وظيفة في الدرجة الأدنى مباشرة، دون تخفيض الأجر.  \n8. الفصل من الخدمة وفقًا لأحكام هذا القانون.  \n\n*المصدر: مادة 139*  \n\n*هذه إجابة معلوماتية عامة ولا تُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي مدة الإجازة المرضية للعامل وكم يستحق من أجر خلالها؟",
+    "topic": "sick leave duration and pay",
+    "category": "in_scope",
+    "expected_articles": [
+      131
+    ],
+    "retrieved_articles": [
+      124,
+      125,
+      126,
+      128,
+      131,
+      159,
+      173,
+      241
+    ],
+    "cited_articles": [
+      131
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "مدة الإجازة المرضية للعامل في المنشآت الصناعية التي يخضع لها قانون تيسير منح تراخيص المنشآت الصناعية هي:\n\n- **ثلاثة أشهر** بأجر كامل.  \n- **ستة أشهر** بأجر يعادل **85 %** من أجره.  \n- **ثلاثة أشهر** بأجر يعادل **75 %** من أجره.  \n\n(يُشترط أن تقرر الجهة الطبية المختصة احتمال شفائه لتطبيق هذه المراحل.)\n\nالمصدر: مادة 131.  \n\n*ملاحظة: هذه المعلومات عامة ولا تُعدّ استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ماذا يحدث إذا تجاوزت مدة عقد العمل محدد المدة خمس سنوات؟",
+    "topic": "fixed-term contract exceeding five years",
+    "category": "in_scope",
+    "expected_articles": [
+      154
+    ],
+    "retrieved_articles": [
+      6,
+      58,
+      90,
+      154,
+      155,
+      164,
+      171,
+      241
+    ],
+    "cited_articles": [
+      154
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "وفقًا للمادة 154 من قانون العمل المصري رقم 14 لسنة 2025:\n\n- إذا أُبرم عقد عمل محدد المدة أو جُدد لمدة تزيد على خمس سنوات، يحق للعامل إنهاؤه دون تعويض عند انقضاء خمس سنوات، بشرط أن يُخطر صاحب العمل كتابةً قبل الإنهاء بمدة ثلاثة أشهر.  \n- تُطبق أحكام الفقرة الثانية من المادة نفسها على حالات إنهاء العامل للعقد بعد انقضاء المدة المذكورة.  \n- إذا كان الإنهاء من جانب صاحب العمل، يحق للعامل الحصول على مكافأة تعادل أجر شهر عن كل سنة من سنوات الخدمة.\n\n**المصدر:** المادة 154.  \n\n*ملاحظة: هذه المعلومات عامة ولا تُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "هل يستحق العامل مكافأة عن مدة عمله بعد سن الستين؟",
+    "topic": "gratuity for work after age 60",
+    "category": "in_scope",
+    "expected_articles": [
+      172
+    ],
+    "retrieved_articles": [
+      92,
+      124,
+      154,
+      163,
+      171,
+      172,
+      175,
+      241
+    ],
+    "cited_articles": [
+      172
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "نعم، يحق للعامل أن يحصل على مكافأة عن مدة عمله بعد سن الستين وفقًا لما نصت عليه **المادة 172** من قانون العمل المصري رقم 14 لسنة 2025.  \n\nالمصدر: مادة 172  \n\n*هذه المعلومات عامة ولا تُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "كم ساعة راحة أسبوعية يستحقها العامل؟",
+    "topic": "weekly rest entitlement",
+    "category": "in_scope",
+    "expected_articles": [
+      120
+    ],
+    "retrieved_articles": [
+      54,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      124
+    ],
+    "cited_articles": [
+      120
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "العامل يستحق راحة أسبوعية لا تقل عن أربع وعشرين ساعة كاملة بعد ستة أيام عمل متصلة على الأكثر.  \n\nالمصدر: مادة 120",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "هل تستحق العاملة فترات راحة للرضاعة بعد إجازة الوضع؟",
+    "topic": "breastfeeding breaks",
+    "category": "in_scope",
+    "expected_articles": [
+      56
+    ],
+    "retrieved_articles": [
+      54,
+      55,
+      56,
+      57,
+      118,
+      124,
+      125,
+      131
+    ],
+    "cited_articles": [
+      56
+    ],
+    "hallucinated_citations": [],
+    "is_abstention": false,
+    "retrieval_hit": true,
+    "citation_correct": true,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "نعم، تستحق العاملة فترات راحة للرضاعة بعد إجازة الوضع؛ فالمادة (56) تنص على أن العاملة التي ترضع طفلها خلال السنتين التاليتين لتاريخ الوضع لها حق في فترتين إضافيتين للرضاعة لا تقل كل منهما عن نصف ساعة، وتُضمّ هاتان الفترتان إلى ساعات العمل دون تخفيض الأجر.  \n\nالمصدر: المادة 56  \n\n*هذا الرد معلومات عامة ولا يُعد استشارة قانونية.*",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي عقوبة السرقة في قانون العقوبات؟",
+    "topic": "criminal theft penalty",
+    "category": "out_of_scope",
+    "expected_articles": [],
+    "retrieved_articles": [
+      281,
+      282,
+      286,
+      287,
+      288,
+      289,
+      290,
+      295
+    ],
+    "cited_articles": [],
+    "hallucinated_citations": [],
+    "is_abstention": true,
+    "retrieval_hit": null,
+    "citation_correct": null,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "غير موجود في القانون المفهرس  \n\nالمصدر: لا توجد مادة ذات صلة في النصوص المسترجعة.",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "كيف يتم احتساب ضريبة الدخل على الأفراد؟",
+    "topic": "personal income tax calculation",
+    "category": "out_of_scope",
+    "expected_articles": [],
+    "retrieved_articles": [
+      1,
+      114,
+      115,
+      151,
+      153,
+      169,
+      172,
+      236
+    ],
+    "cited_articles": [],
+    "hallucinated_citations": [],
+    "is_abstention": true,
+    "retrieval_hit": null,
+    "citation_correct": null,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "غير موجود في القانون المفهرس",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي إجراءات تسجيل عقد إيجار سكني؟",
+    "topic": "residential lease registration",
+    "category": "out_of_scope",
+    "expected_articles": [],
+    "retrieved_articles": [
+      11,
+      37,
+      89,
+      92,
+      93,
+      153,
+      207,
+      214
+    ],
+    "cited_articles": [],
+    "hallucinated_citations": [],
+    "is_abstention": true,
+    "retrieval_hit": null,
+    "citation_correct": null,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "غير موجود في القانون المفهرس",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي شروط الطلاق للضرر في القانون المصري؟",
+    "topic": "divorce on grounds of harm",
+    "category": "out_of_scope",
+    "expected_articles": [],
+    "retrieved_articles": [
+      1,
+      58,
+      91,
+      94,
+      148,
+      150,
+      282,
+      288
+    ],
+    "cited_articles": [],
+    "hallucinated_citations": [],
+    "is_abstention": true,
+    "retrieval_hit": null,
+    "citation_correct": null,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "غير موجود في القانون المفهرس",
+    "manual_correctness_notes": ""
+  },
+  {
+    "question": "ما هي غرامة تجاوز السرعة المقررة في قانون المرور؟",
+    "topic": "traffic speeding fine",
+    "category": "out_of_scope",
+    "expected_articles": [],
+    "retrieved_articles": [
+      281,
+      282,
+      283,
+      284,
+      288,
+      290,
+      294,
+      297
+    ],
+    "cited_articles": [],
+    "hallucinated_citations": [],
+    "is_abstention": true,
+    "retrieval_hit": null,
+    "citation_correct": null,
+    "abstention_correct": true,
+    "has_ground_truth": true,
+    "answer": "غير موجود في القانون المفهرس  \n\nالمصدر: لا توجد مادة ذات صلة في النصوص المسترجعة.  \n\nهذه المعلومات عامة ولا تشكل استشارة قانونية.",
+    "manual_correctness_notes": ""
+  }
+]
