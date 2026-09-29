@@ -1,6 +1,6 @@
 # Egyptian Labor Law Information Assistant
 
-A Retrieval-Augmented Generation (RAG) system that answers questions about Egyptian labor law in Arabic. It retrieves the relevant articles from the official text of **Labor Law No. 14 of 2025** and generates grounded answers with article citations. If the answer isn't in the indexed law, it abstains instead of guessing.
+A Retrieval-Augmented Generation (RAG) system that answers questions about Egyptian labor law in Arabic and English, with a bilingual (Arabic/English) interface. It retrieves the relevant articles from the official text of **Labor Law No. 14 of 2025** and generates grounded answers with article citations. If the answer isn't in the indexed law, it abstains instead of guessing.
 
 **Live demo:** https://egyptian-labor-law-rag.streamlit.app/
 
@@ -13,6 +13,28 @@ A Retrieval-Augmented Generation (RAG) system that answers questions about Egypt
 - **Law:** Labor Law No. 14 of 2025 (effective 1 September 2025, replacing the 2003 law)
 - **Publication:** Official Gazette, Ministry of Labour (112-page official PDF)
 - **Scope:** this single law only, 298 articles. No other legislation is indexed, so questions about criminal, tax, family, property, or traffic law are out of scope by design.
+
+---
+
+## Features
+
+### For users
+
+- **Arabic-first, bilingual interface.** The app opens in Arabic with a right-to-left layout (Amiri and Tajawal fonts). One button switches the whole interface to English with a left-to-right layout (Source Serif 4 and Inter fonts), and back. You can ask in either language and the answer comes back in the language of your question. The law itself is indexed in Arabic, and the system uses a multilingual embedding model to match English questions to the Arabic articles.
+- **Example questions.** On an empty chat, four example questions are shown (annual leave, probation period, maternity leave, contract termination). Click one to ask it instantly, no typing needed.
+- **More topics in the sidebar.** The sidebar menu lists five more ready-made questions (daily working hours, overtime pay, a mother's rights after childbirth, dismissal, minimum wage), plus a short "About" description.
+- **New conversation.** Once a conversation has started, a "New conversation" button appears in the sidebar menu. It clears the chat so you can start fresh.
+- **Article citations.** Every answer ends with a "Source:" line showing one chip per cited article (for example `مادة 90` / `Article 90`), so you can see exactly which article an answer came from.
+- **Clear abstentions.** When the question isn't covered by the indexed law, the app shows a distinct warning box instead of a made-up answer.
+- **Helpful loading and error messages.** A first-load message explains that the system is loading (this can take a minute or more on the live app), and errors such as timeouts or too many requests are shown as clear messages in the selected language.
+- **Instant repeat answers.** Questions that were already asked are served from a cache, so they return immediately.
+
+### Under the hood
+
+- **Grounded answers only.** The system prompt forbids using general legal knowledge outside the retrieved articles.
+- **Fixed-phrase abstention.** When the answer isn't supported, the model must reply with the exact phrase `غير موجود في القانون المفهرس`. It is a code constant, so abstention is detected by exact match rather than fuzzy text checks.
+- **Verified citations.** Every article number the model cites is checked against what Chroma actually retrieved.
+- **Robust citation parsing.** Handles Latin, Arabic-Indic (`٠-٩`), and Extended Arabic-Indic (`۰-۹`) digits, and citations spread over several lines.
 
 ---
 
@@ -41,13 +63,6 @@ Answer + citations + hallucination check + disclaimer
 ```
 
 The RAG loop is written in plain Python with no framework (no LangChain or LlamaIndex), to make each step visible.
-
-### Key behaviors
-
-- **Grounded answers only.** The system prompt forbids using general legal knowledge outside the retrieved articles.
-- **Fixed-phrase abstention.** When the answer isn't supported, the model must reply with the exact phrase `غير موجود في القانون المفهرس`. It is a code constant, so abstention is detected by exact match rather than fuzzy text checks.
-- **Verified citations.** Every article number the model cites is checked against what Chroma actually retrieved. A cited article that was never retrieved is flagged as a hallucinated citation and shown in the UI.
-- **Robust citation parsing.** Handles Latin, Arabic-Indic (`٠-٩`), and Extended Arabic-Indic (`۰-۹`) digits, and citations spread over several lines.
 
 ---
 
@@ -144,7 +159,7 @@ Per-question results are in `data/processed/phase3_eval_summary.md` and `phase3_
 1. **Retrieval miss on the notice-period question.** Article 156 states the notice length but never uses the phrase "مهلة الإخطار", while neighboring articles (158–164) use it repeatedly. At `top_k=5`, Article 156 ranked 8th. Raising `TOP_K` to **8** fixed it with no regressions.
 2. **Rate limit during evaluation.** A live Groq 429 hit one question mid-run. The per-question error handling and incremental saving kept the other 19 results intact. A short delay between questions was added.
 3. **One-character abstention slip.** The model wrote `المفهرد` instead of `المفهرس` when abstaining, which failed the exact-match check. The cause was sampling variance, so `temperature` was lowered to **0** rather than loosening the detection.
-   
+
 ---
 
 ## Latency
@@ -265,6 +280,7 @@ Free hosting has practical limits: an idle app may sleep and reload the model on
 ## Known limitations
 
 - Covers only Law No. 14 of 2025. It does not include executive regulations, ministerial decrees, or other related laws (for example, the Social Insurance Law is referenced but not indexed).
+- Each question is answered on its own. The chat shows the conversation history, but follow-up questions don't use earlier messages as context, so ask complete questions.
 
 ## Acknowledgements
 
