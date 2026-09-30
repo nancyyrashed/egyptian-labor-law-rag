@@ -1,20 +1,17 @@
 """
-Phase 4: FastAPI backend.
+FastAPI backend.
 
-Wraps the existing Phase 2 pipeline (ask.py) behind a single HTTP
-endpoint. No RAG logic is duplicated here - load_resources() and
-ask() are imported directly, same pattern already used by
-evaluate_phase3.py.
+Wraps the RAG pipeline (ask.py) behind a single HTTP endpoint. No RAG logic
+is duplicated here - load_resources() and ask() are imported directly, the
+same way the evaluation script uses them.
 
-Resources (embedding model, Chroma collection, Groq client) are
-loaded ONCE at startup, not per-request - re-loading the embedding
-model on every request would make each call far slower than it
-needs to be for an interactive site.
+Resources (embedding model, Chroma collection, Groq client) are loaded ONCE
+at startup, not per request - re-loading the embedding model on every request
+would make each call far slower than it needs to be.
 
-Rate-limit handling: a live endpoint doesn't have evaluate_phase3.py's
-try/except + retry-friendly batch loop. If Groq's free-tier rate
-limit is hit on a single request, that request should get a clear,
-recoverable error - not a raw 500 crash.
+Rate-limit handling: a live endpoint has no batch loop that can record a
+failure and carry on. If Groq's free-tier rate limit is hit on a single
+request, that request gets a clear, recoverable error instead of a raw 500.
 
 Run:
     uvicorn src.api.main:app --reload
@@ -31,15 +28,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Reuse Phase 2's pipeline directly, same pattern as evaluate_phase3.py
+# Reuse the pipeline in ask.py directly instead of re-implementing it.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pipeline"))
 from ask import load_resources, ask, retrieve  # noqa: E402
 
 
 app = FastAPI(title="Egyptian Labor Law Information Assistant")
 
-# Allows a locally-run Streamlit app (different port) to call this API.
-# Tighten this to a specific origin before deploying publicly (Phase 5).
+# Allows a locally run Streamlit app (on a different port) to call this API.
+# Restrict allow_origins to a specific origin before exposing the API publicly.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -76,7 +73,6 @@ def startup():
 
 class AskRequest(BaseModel):
     question: str
-    lang: str = "ar"  # "ar" | "en" - language the answer is written in
 
 
 class AskResponse(BaseModel):
@@ -96,7 +92,6 @@ def health():
 @app.post("/ask", response_model=AskResponse)
 def ask_endpoint(request: AskRequest):
     question = request.question.strip()
-    lang = "en" if request.lang == "en" else "ar"
 
     if not question:
         raise HTTPException(status_code=400, detail="السؤال فارغ")
@@ -107,8 +102,7 @@ def ask_endpoint(request: AskRequest):
             detail="النظام لا يزال قيد التحميل، يرجى المحاولة بعد قليل",
         )
 
-    # Language is part of the key: same question, different language answer.
-    cache_key = f"{lang}|" + " ".join(question.split())
+    cache_key = " ".join(question.split())
     if cache_key in _cache:
         _cache.move_to_end(cache_key)
         return _cache[cache_key]
@@ -120,16 +114,11 @@ def ask_endpoint(request: AskRequest):
             _resources["groq_client"],
             question,
             verbose=False,
-            lang=lang,
         )
     except Exception as e:
-        # Groq's rate-limit error exposes a status_code attribute in
-        # the SDK's exception hierarchy (as does most HTTP-client-
-        # based SDKs). Checked defensively via getattr rather than
-        # importing a specific exception class, since this should be
-        # verified against your installed groq SDK version's actual
-        # exception type - inspect the real exception here if this
-        # doesn't trigger correctly on a genuine rate-limit error.
+        # Groq's rate-limit error exposes a status_code attribute. It is
+        # checked with getattr rather than by importing a specific exception
+        # class, so this doesn't depend on the SDK's exception hierarchy.
         status_code = getattr(e, "status_code", None)
 
         if status_code == 429:
