@@ -1,13 +1,13 @@
 """
 Diagnostic: for one question, show where the EXPECTED article
-actually ranked, beyond just the top-5 ask.py normally returns.
+actually ranked, beyond just the top-k ask.py normally returns.
 
 Reuses embed_model/collection loading from ask.py directly. Not a
 permanent part of the pipeline - a one-off tool for investigating
-the Article 156 retrieval miss found in Phase 3.
+the Article 156 retrieval miss found during evaluation.
 
-Run:
-    python diagnose_retrieval.py
+Run (from the project root):
+    python src/pipeline/diagnose_retrieval.py
 """
 
 import os
@@ -19,7 +19,7 @@ from ask import load_resources  # noqa: E402
 
 QUESTION = "ما هي مدة مهلة الإخطار بإنهاء عقد العمل غير محدد المدة؟"
 EXPECTED_ARTICLE = 156
-N_RESULTS = 30  # cast a much wider net than the normal top_k=5
+N_RESULTS = 30  # cast a much wider net than the normal top_k
 
 
 def main():
