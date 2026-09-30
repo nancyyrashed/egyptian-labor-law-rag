@@ -1,5 +1,5 @@
 """
-Embed the finalized chunks and store them in Chroma.
+Phase 1: Embed the finalized chunks and store them in Chroma.
 
 Takes labor_law_chunks.json (309 chunks, produced by chunck_articles.py
 and verified against e5-base's real tokenizer) and:
@@ -11,7 +11,7 @@ and verified against e5-base's real tokenizer) and:
   2. Stores each chunk's embedding + full metadata (article_number,
      law_name, source, page, item_range, chunk_index) in a local,
      persistent Chroma collection.
-  3. Runs an end-to-end sanity check: embeds ALL FOUR known test
+  3. Runs a real end-to-end sanity check: embeds ALL FOUR known test
      questions from test_retrieval.py with the "query: " prefix,
      queries the ACTUAL Chroma collection (not an in-memory numpy
      comparison), and reports hit rate + average rank - the same two
@@ -20,9 +20,8 @@ and verified against e5-base's real tokenizer) and:
      compared directly. One question passing isn't enough evidence
      that chunking didn't change retrieval behavior; all four is.
 
-This is the step that turns "the model works in theory"
-(test_embeddings.py, test_retrieval.py) into "the database that was
-actually built works."
+This is the step that turns "the model works in theory" (test_embeddings.py,
+test_retrieval.py) into "the database I actually built works."
 
 Run:
     python src/pipeline/embed_and_store.py
