@@ -1,14 +1,18 @@
 """
-Phase 4: Streamlit frontend (bilingual: Arabic / English).
+Streamlit frontend (bilingual: Arabic / English).
 
-Calls the FastAPI backend (main.py) over HTTP - a separate process from
-the API, matching the planned architecture (FastAPI + Streamlit).
+Questions are answered in one of two modes, selected by RAG_MODE:
+
+  api     (default) - calls the FastAPI backend (main.py) over HTTP, as a
+                      separate process. Used for local development.
+  direct            - runs the pipeline (ask.py) inside the Streamlit
+                      process. Used on hosts that only run Streamlit.
 
 Run (in a separate terminal from the FastAPI server):
 
     streamlit run src/frontend/streamlit_app.py
 
-Requires the FastAPI server already running:
+In api mode the FastAPI server must already be running:
 
     uvicorn src.api.main:app --reload
 """
@@ -32,13 +36,13 @@ import requests
 import streamlit as st
 
 
-# Overridable so the same code runs locally (default) and inside the
-# Docker image, where the API is reachable at 127.0.0.1 inside the container.
+# Overridable so the frontend can be pointed at an API on another host or
+# port.
 API_URL = os.getenv("API_URL", "http://localhost:8000/ask")
 
 # RAG_MODE selects HOW questions are answered:
 #   "api"    (default) - call the separate FastAPI backend at API_URL.
-#                        Used locally and in the Docker image.
+#                        Used for local development.
 #   "direct"           - run the pipeline (ask.py) inside this Streamlit
 #                        process, no separate API. Used on Streamlit
 #                        Community Cloud, which only runs the Streamlit app.
@@ -142,10 +146,6 @@ TEXT = {
         "err_timeout": "The request took too long. Please try again.",
         "warn_429": "Too many requests right now. Please try again shortly.",
         "err_generic": "An unexpected error occurred.",
-        "abstain": (
-            "This is not covered in the indexed text of Labor Law No. 14 of 2025, "
-            "so I can't answer it. Please rephrase your question or consult a licensed lawyer."
-        ),
         "internal_warn": (
             "Internal warning: cited articles that were not actually retrieved: {x}"
         ),
@@ -586,19 +586,19 @@ def _load_pipeline():
 
 
 @st.cache_data(max_entries=500, show_spinner=False)
-def _answer_direct(question: str, lang: str = "ar") -> dict:
+def _answer_direct(question: str) -> dict:
     """
-    Direct mode: run the Phase 2 pipeline in-process. Successful answers are
+    Direct mode: run the RAG pipeline in-process. Successful answers are
     cached (repeat questions are instant); exceptions are never cached.
     """
 
     from ask import ask
 
     embed_model, collection, groq_client = _load_pipeline()
-    return ask(embed_model, collection, groq_client, question, verbose=False, lang=lang)
+    return ask(embed_model, collection, groq_client, question, verbose=False)
 
 
-def ask_api(question: str, lang: str = "ar") -> dict:
+def ask_api(question: str) -> dict:
     """
     Answer a question, via the FastAPI backend ("api" mode, default) or
     in-process ("direct" mode).
@@ -614,7 +614,7 @@ def ask_api(question: str, lang: str = "ar") -> dict:
     if RAG_MODE == "direct":
 
         try:
-            result = _answer_direct(" ".join(question.split()), lang)
+            result = _answer_direct(" ".join(question.split()))
 
         except Exception as e:
 
@@ -639,7 +639,7 @@ def ask_api(question: str, lang: str = "ar") -> dict:
 
         response = requests.post(
             API_URL,
-            json={"question": question, "lang": lang},
+            json={"question": question},
             timeout=30,
         )
 
@@ -767,7 +767,7 @@ def render_assistant(msg: dict) -> None:
     if result["is_abstention"]:
 
         st.warning(
-            t["abstain"] if st.session_state.lang == "en" else result["answer"]
+            result["answer"]
         )
 
         return
@@ -925,7 +925,7 @@ if question:
 
     with st.spinner(t["spinner"]):
 
-        reply = ask_api(question, st.session_state.lang)
+        reply = ask_api(question)
 
 
     # -------------------------------------------------------------
