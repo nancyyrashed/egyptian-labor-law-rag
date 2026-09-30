@@ -108,7 +108,8 @@ TEXT = {
             "ما هي ساعات العمل اليومية القصوى؟",
             "كيف يتم احتساب أجر العمل الإضافي؟",
             "ما هي حقوق العاملة بعد الولادة؟",
-            "متى يحق لصاحب العمل فصل العامل؟"
+            "متى يحق لصاحب العمل فصل العامل؟",
+            "ما هو الحد الأدنى للأجور؟",
         ],
         "head_font": "'Amiri', serif",
         "body_font": "'Tajawal', sans-serif",
@@ -159,7 +160,8 @@ TEXT = {
             "What are the maximum daily working hours?",
             "How is overtime pay calculated?",
             "What are a mother's rights after childbirth?",
-            "When can an employer dismiss a worker?"
+            "When can an employer dismiss a worker?",
+            "What is the minimum wage?",
         ],
         "head_font": "'Source Serif 4', Georgia, serif",
         "body_font": "'Inter', sans-serif",
