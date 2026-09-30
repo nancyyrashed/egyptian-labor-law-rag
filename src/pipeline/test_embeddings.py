@@ -1,27 +1,27 @@
 """
-Phase 1: Token length check + hands-on embedding experiment,
-using the FINAL selected embedding model.
+Token length check + hands-on embedding experiment, using the FINAL
+selected embedding model.
 
 Model selection history: paraphrase-multilingual-MiniLM-L12-v2 was
-tested first and scored only 50% top-5 hit rate in a full-corpus
+tested first and scored only a 50% top-5 hit rate in a full-corpus
 retrieval test (see test_retrieval.py) - it found the right topic
 but not the right article for 2 of 4 real questions. Switching to
 intfloat/multilingual-e5-base (trained specifically for asymmetric
 query-to-passage retrieval, unlike the paraphrase models) raised
-that to 100%, with an average rank of 1.8. This script now tests
-the SELECTED model, not the original candidate.
+that to 100%, with an average rank of 1.8. This script tests the
+SELECTED model, not the original candidate.
 
-Two things happen here, both using your real data:
+Two things happen here, both using the real corpus:
 
-1. We check how many TOKENS (not characters) your longest articles
+1. Check how many TOKENS (not characters) the longest articles
    actually produce with THIS model's tokenizer. e5-base has a
-   different max sequence length than MiniLM did, so the "which
-   articles need splitting" list may be different from before -
-   don't reuse the old MiniLM-based list.
+   different max sequence length than MiniLM, so the list of
+   articles that need splitting differs - the old MiniLM-based
+   list must not be reused.
 
-2. The hands-on experiment: embed a few real Arabic legal sentences
-   from your own corpus (some similar in meaning, one unrelated),
-   print the raw vectors, and compute cosine similarity ourselves.
+2. Hands-on experiment: embed a few real Arabic legal sentences
+   from the corpus (some similar in meaning, one unrelated),
+   print the raw vectors, and compute cosine similarity manually.
    e5 requires "query: " / "passage: " prefixes to work correctly -
    this is not optional, so both sentences are prefixed as passages
    for this comparison.
@@ -80,7 +80,7 @@ def hands_on_embedding_experiment(model, articles):
     print("STEP 2: HANDS-ON EMBEDDING EXPERIMENT (real corpus sentences)")
     print("=" * 60)
 
-    # Real sentences pulled directly from your corpus.
+    # Real sentences pulled directly from the corpus.
     # A: Article 124 - the core annual leave entitlement
     # B: Article 125 - the annual leave scheduling/procedure rule
     #    (same topic as A, genuinely different wording, not a duplicate)
