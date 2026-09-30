@@ -1,13 +1,13 @@
 """
-Phase 1: Real retrieval test across the full corpus.
+Real retrieval test across the full corpus.
 
-Instead of comparing 3 isolated sentences, this embeds ALL 298 real
+Instead of comparing a few isolated sentences, this embeds ALL 298 real
 articles and checks where the CORRECT article actually ranks when a
 realistic question is compared against the whole corpus. This is a
 much closer simulation of real retrieval than a sentence-pair test.
 
-Tests two candidate embedding models side by side, so we can compare
-them on real data before committing to one.
+Tests three candidate embedding models side by side, so they can be
+compared on real data before committing to one.
 """
 
 import json
