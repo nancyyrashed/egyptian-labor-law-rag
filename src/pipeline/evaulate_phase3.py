@@ -1,16 +1,16 @@
 """
-Evaluation.
+Phase 3: Evaluation.
 
-Runs a fixed Q&A test set through the RAG pipeline (load_resources / ask,
-imported directly from ask.py - no logic duplicated) and reports, per
-question and in aggregate:
+Runs a fixed Q&A test set through the existing Phase 2 pipeline
+(load_resources / ask, imported directly from ask.py — no logic
+duplicated) and reports, per question and in aggregate:
 
   - retrieval hit rate      (was the expected article among the
                               top-k chunks Chroma actually returned?)
   - citation accuracy       (did the model cite the expected
                               article(s), out of what it cited?)
   - hallucination rate      (did the model cite an article number
-                              that was never even retrieved? - this
+                              that was never even retrieved? — this
                               reuses ask.py's own hallucination check,
                               it isn't recomputed here)
   - abstention correctness  (did it abstain exactly when it should:
@@ -19,36 +19,38 @@ question and in aggregate:
 
 Ground truth note:
 Every expected_articles value below was checked directly against
-labor_law_articles.json, not filled in from general legal knowledge. A
-few things worth knowing:
+your actual labor_law_articles.json (not filled from general legal
+knowledge) — same standard your Phase 2 docs held the model to. A
+few, worth knowing about going in:
 
   - "Work-injury compensation" and "iddah/widowhood leave" aren't in
-    this test set because this law doesn't answer them itself -
+    this test set because this law doesn't answer them itself —
     Article 1's definitions clause explicitly defers "إصابة العمل"
     to the Social Insurance Law (148/2019) instead of defining it
     here, and no iddah-leave provision exists in the corpus at all.
-    Asking the system these would really test "does it abstain on
-    something adjacent but not covered," which would be a good
-    addition but needs a clear scoring rule (citing Article 1's
-    deferral is arguably correct, not a hallucination). They were
-    left out rather than scored against guessed ground truth.
-  - "Trade union multi-membership" was dropped for the same reason -
-    this labor law doesn't legislate it (it's Trade Union Law 213/2017
-    territory), so there is no article to check the system against.
+    Asking the system these would really be testing "does it abstain
+    on something adjacent-but-not-covered," which is a good question
+    for Phase 3 to eventually add, but needs a bit more thought on
+    how to score (partial abstention? citing Article 1's deferral is
+    arguably correct, not a hallucination). Left out for now rather
+    than scored against guessed ground truth.
+  - "Trade union multi-membership" was dropped the same way — this
+    labor law doesn't legislate that (it's Trade Union Law 213/2017
+    territory), so there's no article to check the system against.
   - "Fixed-term contract max duration" and "end-of-service gratuity"
-    don't have a single clean answer in this law: it doesn't cap
-    fixed-term contract length outright, and general gratuity was
-    mostly replaced by the pension system. They were reworded to the
-    specific provisions that do exist (Article 154's right to end a
-    contract longer than five years, Article 172's gratuity for
-    service continued past age 60).
+    turned out not to have the single clean answer I assumed — this
+    law doesn't cap fixed-term contract length outright, and general
+    gratuity was mostly replaced by the pension system. Reworded to
+    the specific provisions that DO exist (Article 154's >5-year
+    termination right, Article 172's post-60 gratuity) rather than
+    the vaguer original phrasing.
 
-Run (from the project root):
-    python src/pipeline/evaulate_phase3.py
+Run:
+    python evaluate_phase3.py
 
 Outputs:
     data/processed/phase3_eval_results.json   (full per-question detail)
-    data/processed/phase3_eval_summary.md     (results table)
+    data/processed/phase3_eval_summary.md     (results table, like Phase 1/2 docs)
 """
 
 import json
@@ -56,7 +58,7 @@ import os
 import sys
 import time
 
-# Reuse the pipeline in ask.py directly rather than re-implementing
+# Reuse Phase 2's pipeline directly rather than re-implementing
 # retrieval/generation/citation logic here.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src", "pipeline"))
 from ask import load_resources, ask  # noqa: E402
@@ -67,14 +69,15 @@ SUMMARY_MD_PATH = "data/processed/phase3_eval_summary.md"
 
 
 # ---------------------------------------------------------------
-# TEST SET - 20 questions: 15 in-scope (expected_articles verified
-# against labor_law_articles.json) and 5 out-of-scope (should abstain).
-# Topics are spread across the law rather than clustered around the
-# four articles used in the smoke tests in ask.py.
+# TEST SET — 20 questions: 15 in-scope (expected_articles verified
+# against labor_law_articles.json), 5 out-of-scope (should abstain).
+# Topics deliberately spread across the law rather than clustered
+# around the same 4 articles already used in Phase 1/2 smoke tests,
+# so Phase 3 actually tests new ground.
 # ---------------------------------------------------------------
 
 TEST_SET = [
-    # --- in-scope: verified against the corpus ---
+    # --- in-scope: verified against your corpus ---
     {
         "question": "كم مدة فترة الاختبار المسموح بها للعامل؟",
         "expected_articles": [90],
