@@ -1,26 +1,23 @@
 """
-Phase 2: Retrieval -> Groq -> Grounded Answer + Citations.
+Retrieval-augmented question answering: retrieval -> Groq -> grounded answer
+with article citations.
 
-The actual RAG loop, in plain Python, no framework:
+The full RAG loop, in plain Python with no framework:
 
-  1. Embed the user's Arabic question (with the "query: " prefix e5
-     requires - same convention validated in Phase 1).
-  2. Query the persisted Chroma collection (built in embed_and_store.py)
+  1. Embed the user's question (with the "query: " prefix e5 requires).
+  2. Query the persisted Chroma collection (built by embed_and_store.py)
      for the top-k most similar chunks.
   3. Build a prompt that constrains the model to answer ONLY from the
-     retrieved articles, states clearly this is legal information (not
-     legal advice), and must abstain with a fixed, detectable phrase if
-     the answer isn't actually supported by what was retrieved.
-  4. Send it to Groq, parse the answer + the article number(s) the
+     retrieved articles, states that this is legal information (not legal
+     advice), and requires a fixed, detectable phrase when the answer isn't
+     supported by what was retrieved.
+  4. Send it to Groq and parse the answer plus the article number(s) the
      model claims it used.
-  5. Cross-check the model's cited articles against what was ACTUALLY
-     retrieved, so a hallucinated citation (an article number the
-     model mentions that was never in the retrieved context) is
-     caught programmatically, not just by eyeballing the text.
+  5. Cross-check the cited articles against what was ACTUALLY retrieved, so
+     a citation to an article that was never in the context is caught
+     programmatically instead of by eyeballing the text.
 
-Checkpoint this satisfies: any answer can be traced to the exact
-article(s) that produced it, and wrong/hallucinated answers can be
-explained rather than just observed.
+Any answer can therefore be traced to the exact article(s) that produced it.
 
 Requires a .env file with:
     GROQ_API_KEY=gsk_...
@@ -46,30 +43,27 @@ CHROMA_DIR = "data/chroma"
 COLLECTION_NAME = "labor_law_chunks"
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-base"
 
-# Groq's recommended replacement for the now-deprecated
-# llama-3.3-70b-versatile (deprecated 2026-08-16). Override via env var
-# if Groq deprecates this one too - don't hardcode a model name deep
-# in the prompt logic below.
+# Replacement for the deprecated llama-3.3-70b-versatile. Override with the
+# GROQ_MODEL environment variable so the model name isn't hardcoded deep in
+# the prompt logic below.
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 TOP_K = 8
 
 # Reasoning effort for gpt-oss models on Groq ("low" | "medium" | "high").
-# This task is extractive (find the article, restate it, cite it), so
-# "low" cuts the hidden thinking time on every question. Set
-# GROQ_REASONING_EFFORT="" to disable the parameter entirely (e.g. if you
-# switch to a model that does not support it). Re-run the Phase 3 eval
-# after changing this.
+# The task is extractive (find the article, restate it, cite it), so "low"
+# cuts hidden thinking time on every question. Set GROQ_REASONING_EFFORT=""
+# to omit the parameter entirely (for models that don't support it). Re-run
+# the evaluation after changing this.
 REASONING_EFFORT = os.getenv("GROQ_REASONING_EFFORT", "low")
 
 # Cap on generated tokens. For reasoning models this includes the hidden
 # reasoning tokens, so keep it generous to avoid truncated answers.
 MAX_COMPLETION_TOKENS = int(os.getenv("GROQ_MAX_COMPLETION_TOKENS", "1500"))
 
-# Fixed, exact phrase the model must use to abstain. Kept as a
-# constant (not just described in the prompt) so code can check for
-# it programmatically in Phase 3's evaluation, rather than relying on
-# fuzzy text matching.
+# Fixed, exact phrase the model must use to abstain. Kept as a constant (not
+# just described in the prompt) so code can detect it with an exact match
+# instead of fuzzy text matching.
 ABSTAIN_PHRASE = "غير موجود في القانون المفهرس"
 
 SYSTEM_PROMPT = f"""أنت مساعد معلومات قانونية متخصص في قانون العمل المصري رقم 14 لسنة 2025.
@@ -94,29 +88,6 @@ SYSTEM_PROMPT = f"""أنت مساعد معلومات قانونية متخصص �
 5. لا تدمج معلومات من مادتين لتكوّن قاعدة جديدة غير منصوص عليها
    حرفياً في أي منهما.
 """
-
-# Appended to the system prompt when the user is on the English site.
-# Retrieval, the corpus, the Arabic prompt rules and the abstention phrase
-# are all unchanged - the model just writes its answer in English. The
-# abstention phrase deliberately stays in Arabic so ABSTAIN_PHRASE detection
-# keeps working; the frontend shows its own English message for it.
-ENGLISH_ADDENDUM = """
-
-LANGUAGE OVERRIDE - the user is reading the English version of the site:
-- Write the ENTIRE answer in clear English, faithfully translating what the
-  Arabic articles say. Keep every number, duration, percentage, condition and
-  exception exactly as in the article; do not add, drop or soften anything.
-- Rule 2 is unchanged: if the answer is not clearly in the retrieved articles,
-  reply with the exact Arabic phrase only, untranslated.
-- Rules 3 and 4 apply, but write them in English: put the sources on their own
-  line in exactly this form: "Source: Article X" or "Sources: Articles X, Y",
-  and write the short "general legal information, not legal advice" reminder
-  in English.
-"""
-
-
-def get_system_prompt(lang="ar"):
-    return SYSTEM_PROMPT + ENGLISH_ADDENDUM if lang == "en" else SYSTEM_PROMPT
 
 
 def load_resources():
@@ -159,7 +130,7 @@ def build_user_prompt(question, retrieved_chunks):
 سؤال المستخدم: {question}"""
 
 
-def call_groq(groq_client, question, retrieved_chunks, lang="ar"):
+def call_groq(groq_client, question, retrieved_chunks):
     user_prompt = build_user_prompt(question, retrieved_chunks)
 
     kwargs = {}
@@ -169,7 +140,7 @@ def call_groq(groq_client, question, retrieved_chunks, lang="ar"):
     response = groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
-            {"role": "system", "content": get_system_prompt(lang)},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0,  # low temperature - this is a grounded-fact task, not creative writing
@@ -181,38 +152,27 @@ def call_groq(groq_client, question, retrieved_chunks, lang="ar"):
 
 def extract_cited_articles(answer_text):
     """
-    Pulls out article numbers the model claims it used, from a line
-    like 'المصدر: مادة 90' or 'المصدر: المواد: 90، 117'. Returns a set
-    of ints. Best-effort - the model is instructed to follow this
-    format, but this doesn't assume it always will.
+    Pulls out article numbers the model claims it used, from a line like
+    'المصدر: مادة 90' or 'المصدر: المواد: 90، 117'. Returns a set of ints.
+    Best-effort: the model is instructed to follow this format, but this
+    doesn't assume it always will.
 
-    Deliberately scoped to ONLY the "المصدر" line itself (matched up
-    to the next newline), not everything after its first occurrence.
-    The citation line doesn't always come last - the disclaimer
-    sentence sometimes follows it (see real Q2/Q3/Q4 outputs) - so
-    grabbing "everything after المصدر" would silently sweep up any
-    digit that happened to appear later in the response, e.g. in a
-    disclaimer, a different sentence, or a second mention. Scoping to
-    one line removes that failure mode entirely, regardless of where
-    the citation line falls in the response.
+    Scoped to ONLY the "المصدر" line itself (up to the next newline), not
+    everything after its first occurrence. The citation line doesn't always
+    come last - the disclaimer sentence sometimes follows it - so taking
+    everything after "المصدر" could pick up stray digits from a disclaimer
+    or another sentence.
 
-    Matches BOTH Latin digits (0-9) and the Arabic-Indic / Extended
-    Arabic-Indic digits (٠-٩ / ۰-۹) documented in chunck_articles.py -
-    every real response so far happened to use Latin digits, but the
-    model is generating Arabic text from a corpus that itself mixes
-    both digit systems, so nothing guarantees it always will.
+    Matches both Latin digits (0-9) and Arabic-Indic / Extended Arabic-Indic
+    digits (٠-٩ / ۰-۹). The corpus mixes both digit systems (see
+    chunck_articles.py), so the model's output may too.
 
-    Scans ALL lines containing "المصدر", not just the first. Real
-    runs show the model sometimes cites one article, sometimes
-    several - so far always grouped onto a single line (e.g.
-    "المصدر: مادة 117، مادة 119"), but nothing in the prompt actually
-    forces that; a version that only checked the first matching line
-    would silently drop any citation the model put on a second
-    "المصدر" line instead.
+    Scans ALL lines containing "المصدر", not just the first, so a citation
+    placed on a second "المصدر" line isn't silently dropped. In practice the
+    model usually groups citations on one line (e.g. "المصدر: مادة 117،
+    مادة 119"), but the prompt doesn't force that.
     """
-    # Also matches the English citation line ("Source: Article 90") used
-    # when the site language is English.
-    lines = re.findall(r'(?:المصدر|Sources?[\s*_]*:)[^\n]*', answer_text)
+    lines = re.findall(r'المصدر[^\n]*', answer_text)
     if not lines:
         return set()
 
@@ -233,28 +193,26 @@ def extract_cited_articles(answer_text):
     return all_numbers
 
 
-def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=True, lang="ar"):
+def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=True):
     t0 = time.perf_counter()
     retrieved_chunks = retrieve(embed_model, collection, question, top_k)
     t1 = time.perf_counter()
     retrieved_article_numbers = {c["article_number"] for c in retrieved_chunks}
 
-    answer_text = call_groq(groq_client, question, retrieved_chunks, lang)
+    answer_text = call_groq(groq_client, question, retrieved_chunks)
     t2 = time.perf_counter()
     timing = {"retrieve_s": round(t1 - t0, 3), "groq_s": round(t2 - t1, 3)}
 
     is_abstention = ABSTAIN_PHRASE in answer_text
     cited_articles = set() if is_abstention else extract_cited_articles(answer_text)
 
-    # The core hallucination check: did the model cite an article
-    # number that was never even in the retrieved context? If so, it
-    # didn't "find" that citation in what it was given - it invented
-    # it, which is exactly the failure mode Phase 3 needs to catch.
+    # Core hallucination check: an article number the model cites that was
+    # never in the retrieved context wasn't found in what it was given, so
+    # it was invented.
     hallucinated = cited_articles - retrieved_article_numbers
 
     result = {
         "question": question,
-        "lang": lang,
         "answer": answer_text,
         "retrieved_articles": sorted(retrieved_article_numbers),
         "cited_articles": sorted(cited_articles),
@@ -282,8 +240,8 @@ def ask(embed_model, collection, groq_client, question, top_k=TOP_K, verbose=Tru
 def main():
     embed_model, collection, groq_client = load_resources()
 
-    # Same known questions used throughout Phase 1, plus one
-    # deliberately out-of-scope question to test abstention.
+    # Smoke-test questions: four with known answers, plus one deliberately
+    # out-of-scope question to check abstention.
     test_questions = [
         "كم مدة فترة الاختبار المسموح بها للعامل؟",
         "ما هو الحد الأقصى لساعات العمل اليومية؟",
@@ -299,11 +257,9 @@ def main():
         try:
             result = ask(embed_model, collection, groq_client, q)
         except Exception as e:
-            # A single failed call (rate limit, timeout, transient
-            # network error) should not cost you every question that
-            # already succeeded before it - especially once this same
-            # loop is reused for Phase 3's 15-20 question batch, where
-            # a mid-run failure was previously silent data loss.
+            # A single failed call (rate limit, timeout, network error)
+            # shouldn't lose the results of questions that already
+            # succeeded.
             print(f"\n[ERROR] Question {i} failed: {q}")
             print(f"        {type(e).__name__}: {e}")
             result = {
