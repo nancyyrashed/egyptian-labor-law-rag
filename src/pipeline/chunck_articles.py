@@ -1,7 +1,7 @@
 """
-Phase 1: Chunk articles for embedding.
+Chunk articles for embedding.
 
-Strategy, based on real analysis of the corpus:
+Strategy, based on analysis of the corpus:
 
 - 293 articles are short enough (under e5-base's 512-token limit)
   to stay as ONE chunk each.
@@ -11,13 +11,13 @@ Strategy, based on real analysis of the corpus:
   keeps the article's opening framing line, so a chunk containing
   only item 9 still reads as "one of the worker's duties," not a
   floating fragment.
-- 1 article (253) has no numbered structure at all - just prose
-  paragraphs - so it's split by paragraph instead.
+- 1 article (253) has no numbered structure at all - just continuous
+  prose - so it is split at sentence boundaries instead.
 
-Numbered-item detection handles a real, confirmed quirk in this
-corpus: article numbering mixes standard Arabic-Indic digits (٠-٩)
-and Extended Arabic-Indic/Persian digits (۰-۹) even within the same
-list (e.g. Article 1 uses ٢٧ then ۲۸ back-to-back). Both are matched.
+Numbered-item detection handles a quirk of this corpus: article
+numbering mixes standard Arabic-Indic digits (٠-٩) and Extended
+Arabic-Indic/Persian digits (۰-۹) even within the same list (e.g.
+Article 1 uses ٢٧ then ۲۸ back-to-back). Both are matched.
 """
 
 import json
@@ -184,7 +184,7 @@ def chunk_article(article):
             })
         return chunks
 
-    # No numbered items found (e.g. Article 253) - split by paragraph
+    # No numbered items found (e.g. Article 253) - split by sentence
     paragraphs = split_into_paragraphs(text)
     groups = group_paragraphs_by_budget(paragraphs, CHAR_BUDGET)
     chunks = []
